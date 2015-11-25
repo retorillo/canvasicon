@@ -1,107 +1,117 @@
-// canvasicon.js - MIT License - (c) 2015 Retorillo
-var canvasicon = new function () {
-	var _ns = this; // namespace object
-	var $ = function (ctx) {
-		[ 
-			{ l: "beginPath", s: "bp" }, 
-			{ l: "closePath", s: "cp" },
-			{ l: "lineTo", s: "lt" },
-			{ l: "moveTo", s: "mt"},
-			{ l: "fill", s: "f" },
-		]
-	} // wrapper
-
-	_ns.primaryColor = "rgb(0, 0, 0)";
-	_ns.dangerColor = "rgb(200, 0, 0)";
-	_ns.drawSpeaker = function (ctx, x, y, w, h, v, style) {
-		var size = Math.min(w, h);
-		x += (w - size) / 2;
-		y += (h - size) / 2;
-
-		var s = style || {};
-		s.body_c = s.body_c || _ns.primaryColor;
-		s.wave_c = s.wave_c || [_ns.primaryColor, _ns.primaryColor, _ns.primaryColor];
-		s.mute_c = s.mute_c || _ns.dangerColor;
-		s.body_w = s.body_w || 0.5; // body width vs size
-		s.body_h = s.body_h || 0.8; // body height vs size
-		s.neck_w = s.neck_w || 0.4; // neck width vs body
-		s.neck_h = s.neck_h || 0.5; // neck height vs body
-		s.wave_t = s.wave_t || 0.1; // wave thickness vs size
-		s.wave_d = s.wave_d || Math.PI * 0.6; // wave degree
-		s.wave_cap = s.wave_cap || "round"; // cap
-		s.mute_m = s.mute_m || 0.2; // mute margin vs (w - body)
-		s.mute_hr = 1; // mute horizontal rate (1 is center)
-		s.mute_vr = 1; // mute vertical rate (1 is middle)
-		s.mute_t = s.mute_t || "round"; // mute thickness vs size
-		s.mute_cap = s.mute_cap || "round"; // cap
-		s.boundary = s.boundary || false;
-
-		body_w = s.body_w * size;
-		var wave_t = s.wave_t * size; // wave thickness
-		var mute_t = s.mute_t * size; // mute thickness
-		var body_y_margin = (h - (s.body_h * size)) / 2;
-		var wave_r = (1 - s.body_w) * size; // wave radius
-
+/*! canvasicon.js - MIT License - (c) 2015 Retorillo */
+var canvasicon = new function (undefined) {
+	var canvasicon = this;
+	function initprops(obj, setters) {
+		obj = obj || {};
+		setters.forEach(function(setter) {
+			obj[setter.name] = obj[setter.name] || setter.value;
+		});
+		return obj;
+	}
+	canvasicon.$ = function (ctx) {
+		var obj = {};
+		obj.ctx = ctx;
+		[ { l: 'beginPath',   s: 'bp' }, 
+		  { l: 'closePath',   s: 'cp' },
+		  { l: 'lineTo',      s: 'lt' },
+		  { l: 'moveTo',      s: 'mt' },
+		  { l: 'fill',        s: 'f'  },
+		  { l: 'rect',        s: 'r'  },
+		  { l: 'arc',         s: 'a'  },
+		  { l: 'stroke',      s: 's'  },
+		  { l: 'fillStyle',   s: 'fs', p: true },
+		  { l: 'strokeStyle', s: 'ss', p: true },
+		  { l: 'lineWidth',   s: 'lw', p: true },
+		  { l: 'lineCap',     s: 'lc', p: true },
+		].forEach(function(d) {
+			obj[d.s] = d.p ? function() { this.ctx[d.l] = arguments[0]; return obj; }
+				       : function() { this.ctx[d.l].apply(this.ctx, arguments); return obj; }
+			obj[d.l] = obj[d.s];
+		});
+		return obj;
+	}
+	canvasicon.defaultSize = 50;
+	canvasicon.primaryColor = '#000';
+	canvasicon.dangerColor  = '#b02';
+	canvasicon.drawSpeaker = function (ctx, style) {
+		style = initprops(style, [
+			{ name: 'x',                  value: 0 },
+			{ name: 'y',                  value: 0 },
+			{ name: 'height',             value: canvasicon.defaultSize },
+			{ name: 'width',              value: canvasicon.defaultSize },
+			{ name: 'volume',             value: 0 },
+			{ name: 'bodyColor',          value: (style && style.volume) ? canvasicon.primaryColor : canvasicon.dangerColor },
+			{ name: 'waveColors',         value: [canvasicon.primaryColor, canvasicon.primaryColor, canvasicon.primaryColor] },
+			{ name: 'crossColor',         value: canvasicon.dangerColor },
+			{ name: 'bodyWidthRate',      value: 0.5 },           // Body width rate as compated with size
+			{ name: 'bodyHeightRate',     value: 0.8 },           // Body height rate as compared with size
+			{ name: 'neckWidthRate',      value: 0.4 },           // Neck width rate compared with body width
+			{ name: 'neckHeightRate',     value: 0.5 },           // Neck height rate compared with body height
+			{ name: 'waveThicknessRate',  value: 0.1 },           // Wave thickness rate compared with size
+			{ name: 'waveArcDegree',      value: Math.PI * 0.6 },
+			{ name: 'waveCapStyle',       value: "round" }, 
+			{ name: 'crossMarginRate',    value: 0.2 },           // Cross margin compared with (width - body)
+			{ name: 'crossHPosRate',      value: 1 },             // Cross horizontal position rate (1 is center)
+			{ name: 'crossVPosRate',      value: 1 },             // Cross vertical position rate (1 is middle)
+			{ name: 'crossThicknessRate', value: 0.1 },           // Cross thickness rate compared with size
+			{ name: 'crossCapStyle',      value: "round" },
+			{ name: 'boundary',           value: false },
+		]);
+		var $ctx = canvasicon.$(ctx);
+		var size = Math.min(style.width, style.height);
+		var body_w  = style.bodyWidthRate * size;
+		var x = style.x + (style.width - size) / 2;
+		var y = style.x + (style.height - size) / 2;
+		var wave_t  = style.waveThicknessRate * size; // wave thickness
+		var cross_t = style.crossThicknessRate * size; // mute thickness
+		var body_ym = (style.height - (style.bodyHeightRate * size)) / 2;  // y margin
+		var wave_r  = (1 - style.bodyWidthRate) * size; // wave radius
 		// Draw Boundary
-		if (s.boundary) {
-			ctx.fill("red");
-			ctx.rect(0, 0, w, h);
-		}
-
+		if (style.boundary) 
+			$ctx.fs('red').rect(0,0,width,height);
 		// Draw Speaker Body
-		ctx.fillStyle = v > 0 ? s.body_c : s.mute_c;
-		ctx.beginPath();
-		ctx.moveTo(x, y + (1 - s.neck_h) / 2 * size + body_y_margin);
-		ctx.lineTo(x, y + (0.5 + 0.5 * s.neck_h) * size - body_y_margin);
-		ctx.lineTo(x + body_w * s.neck_w,
-			   y + (0.5 + 0.5 * s.neck_h) * size - body_y_margin);
-		ctx.lineTo(x + body_w, y + size - body_y_margin);
-		ctx.lineTo(x + body_w, y + body_y_margin);
-		ctx.lineTo(x + body_w * s.neck_w,
-			   y + (0.5 - 0.5 * s.neck_h) * size + body_y_margin);
-		ctx.fill();
-		ctx.closePath();
-
+		$ctx.fs(style.bodyColor)
+		    .bp()
+		    .mt(x, y + (1 - style.neckHeightRate) / 2 * size + body_ym)
+		    .lt(x, y + (0.5 + 0.5 * style.neckHeightRate) * size - body_ym)
+		    .lt(x + body_w * style.neckWidthRate, y + (0.5 + 0.5 * style.neckHeightRate) * size - body_ym)
+		    .lt(x + body_w, y + size - body_ym)
+		    .lt(x + body_w, y + body_ym)
+		    .lt(x + body_w * style.neckWidthRate, y + (0.5 - 0.5 * style.neckHeightRate) * size + body_ym)
+		    .cp()
+		    .f();
 		// Draw Wave
-		ctx.lineWidth = wave_t;
-		ctx.lineCap = s.wave_cap;
+		$ctx.lw(wave_t).lc(style.waveCapStyle);
 		[0.4, 0.7, 1].forEach(function (radius, index) {
-			if (v <= 0 || (index > 0 && v < 0.33) ||
-			    (index > 1 && v < 0.66)) return;
+			if (style.volume <= 0 || (index > 0 && style.volume < 0.33) ||
+			    (index > 1 && volume < 0.66)) return;
 			var cx = body_w;
 			var cy = size / 2;
-			var start = (Math.PI - s.wave_d) / 2 - Math.PI / 2
-			var end = start + s.wave_d;
-			ctx.strokeStyle = s.wave_c[index];
-			ctx.beginPath();
-			ctx.arc(x + cx, y + cy, wave_r * radius - wave_t / 2,
-				    start, end)
-			ctx.stroke();
-			ctx.closePath();
+			var start = (Math.PI - style.waveArcDegree) / 2 - Math.PI / 2
+			var end = start + style.waveArcDegree;
+			$ctx.ss(style.waveColors[index])
+			    .bp()
+			    .arc(x + cx, y + cy, wave_r * radius - wave_t / 2, start, end)
+			    .s()
+			    .cp();
 		});
-
-		// Draw Mute Symbol
-		ctx.lineWidth = s.mute_t;
-		ctx.lineCap = s.mute_cap;
-		if (v == 0) {
-			var mute_x = body_w;
-			var mute_s = size - mute_x; //mute size
-			var mute_m = mute_s * s.mute_m;
-			mute_s -= mute_m * 2;
-			var offset_x = mute_m * s.mute_hr;
-			var offset_y = size * (s.mute_vr - 0.5) - mute_s / 2;
-			ctx.strokeStyle = s.mute_c;
-			ctx.beginPath();
-			ctx.moveTo(x + mute_x + offset_x, y + offset_y); //lt
-			ctx.lineTo(x + mute_x + mute_s + offset_x,
-				 y + mute_s + offset_y); //rb
-			ctx.moveTo(x + mute_x + mute_s + offset_x,
-				   y + offset_y); //rt
-			ctx.lineTo(x + mute_x + offset_x,
-				 y + mute_s + offset_y); //lb
-			ctx.stroke();
-			ctx.closePath();
+		// Draw Cross
+		$ctx.lw(cross_t).lc(style.crossCapStyle);
+		if (!style.volume) {
+			var cross_x = body_w;
+			var cross_s = size - cross_x; //cross size
+			var crossMargin = cross_s * style.crossMarginRate;
+			cross_s -= crossMargin * 2;
+			var offset_x = crossMargin * style.crossHPosRate;
+			var offset_y = size * (style.crossVPosRate - 0.5) - cross_s / 2;
+			$ctx.ss(style.crossColor)
+			    .bp()
+			    .mt(x + cross_x + offset_x, y + offset_y) //lt
+			    .lt(x + cross_x + cross_s + offset_x, y + cross_s + offset_y) //rb
+			    .mt(x + cross_x + cross_s + offset_x, y + offset_y) //rt
+			    .lt(x + cross_x + offset_x, y + cross_s + offset_y) //lb
+			    .s()
+			    .cp();
 		}
 	}
-
-}; // canvasicon namespace
+};

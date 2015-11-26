@@ -21,9 +21,10 @@ var canvasicon = new function (undefined) {
 		this.clone = function() { return new Rect(this.x, this.y, this.w, this.h); }
 		var toarray = function (list) { var a = []; for (var c = 0 ; c < list.length; c++) a.push(list[c]); return a; }
 		var split = function(ratio, y, h) {
-			var r = [], tr = 0; y = y || 'y'; h = h || 'h'; ratio.forEach(function(r) { tr += r });
-			for (var c = 0, sy = this[y], sh = this[h] / tr; c < ratio.length; sy += r[c][h], c++) {
-				r[c] = this.clone(); r[c][y] = sy; r[c][h] = sh * ratio[c];
+			var r = [], tr = 0, tra = 0; y = y || 'y'; h = h || 'h'; 
+			ratio.forEach(function(r) { if (r == '*') { tra++ } else { tr += r } });
+			for (var c = 0, sy = this[y], sh = this[h]; c < ratio.length; sy += r[c][h], c++) {
+				r[c] = this.clone(); r[c][y] = sy; r[c][h] = sh * (ratio[c] == '*' ? (1 - tr) / tra : ratio[c]);
 			}
 			return 	r;
 		}
@@ -89,76 +90,57 @@ var canvasicon = new function (undefined) {
 			{ name: 'bodyColor',          value: canvasicon.primaryColor },
 			{ name: 'waveColors',         value: [canvasicon.primaryColor, canvasicon.primaryColor, canvasicon.primaryColor] },
 			{ name: 'crossColor',         value: canvasicon.dangerColor },
-			{ name: 'bodyWidthRate',      value: 0.5 },           // Body width rate as compated with size
-			{ name: 'bodyHeightRate',     value: 0.8 },           // Body height rate as compared with size
-			{ name: 'neckWidthRate',      value: 0.4 },           // Neck width rate compared with body width
-			{ name: 'neckHeightRate',     value: 0.5 },           // Neck height rate compared with body height
-			{ name: 'waveThicknessRate',  value: 0.1 },           // Wave thickness rate compared with size
-			{ name: 'waveArcDegree',      value: Math.PI * 0.6 },
-			{ name: 'waveCapStyle',       value: 'round' }, 
-			{ name: 'crossMarginRate',    value: 0.2 },           // Cross margin compared with (width - body)
-			{ name: 'crossHPosRate',      value: 1 },             // Cross horizontal position rate (1 is center)
-			{ name: 'crossVPosRate',      value: 1 },             // Cross vertical position rate (1 is middle)
-			{ name: 'crossThicknessRate', value: 0.1 },           // Cross thickness rate compared with size
-			{ name: 'crossCapStyle',      value: 'round' },
-			{ name: 'boundary',           value: false },
+			{ name: 'paddingRate',        value: 0.1  },
+			{ name: 'coneWidthRate',      value: 0.20 },
+			{ name: 'coneHeightRate',     value: 0.70 },
+			{ name: 'neckWidthRate',      value: 0.15 },
+			{ name: 'neckHeightRate',     value: 0.30 },
+			{ name: 'waveRadiusRates',    value: [0.4, 0.7, 1]},
+			{ name: 'waveThicknessRate',  value: 0.1 },
+			{ name: 'waveArcDegree',      value: 90 },
+			{ name: 'waveCapStyle',       value: 'square' }, 
+			{ name: 'crossSizeRate',      value: 0.5 },
+			{ name: 'crossThicknessRate', value: 0.1 },
+			{ name: 'crossCapStyle',      value: 'square' },
 		]);
+		var squarew = Math.min(style.width, style.height);
+		var rect = new Rect(style.x, style.y, squarew, squarew);
+		var pad = squarew * style.paddingRate;
+		rect.inflate(-pad, -pad);
+		var vcells = rect.vsplit(style.neckWidthRate, style.coneWidthRate, '*');
+		var ncell = vcells[0].split('*', style.neckHeightRate, '*')[1];
+		var ccell = vcells[1].split('*', style.coneHeightRate, '*')[1];
 		var $ctx = canvasicon.$(ctx);
-		var size = Math.min(style.width, style.height);
-		var body_w  = style.bodyWidthRate * size;
-		var x = style.x + (style.width - size) / 2;
-		var y = style.y + (style.height - size) / 2;
-		var wave_t  = style.waveThicknessRate * size; // wave thickness
-		var cross_t = style.crossThicknessRate * size; // mute thickness
-		var body_ym = (style.height - (style.bodyHeightRate * size)) / 2;  // y margin
-		var wave_r  = (1 - style.bodyWidthRate) * size; // wave radius
-		// Draw Boundary
-		if (style.boundary) 
-			$ctx.fs('red').rect(0,0,width,height);
-		// Draw Speaker Body
-		$ctx.fs(style.bodyColor)
-		    .bp()
-		    .mt(x, y + (0.5 - 0.5 * style.neckHeightRate) * size + body_ym)
-		    .lt(x, y + (0.5 + 0.5 * style.neckHeightRate) * size - body_ym)
-		    .lt(x + body_w * style.neckWidthRate, y + (0.5 + 0.5 * style.neckHeightRate) * size - body_ym)
-		    .lt(x + body_w, y + size - body_ym)
-		    .lt(x + body_w, y + body_ym)
-		    .lt(x + body_w * style.neckWidthRate, y + (0.5 - 0.5 * style.neckHeightRate) * size + body_ym)
-		    .cp()
-		    .f();
-		// Draw Wave
-		$ctx.lw(wave_t).lc(style.waveCapStyle);
-		[0.4, 0.7, 1].forEach(function (radius, index) {
-			if (style.volume <= 0 || (index > 0 && style.volume < 0.33) ||
-			    (index > 1 && style.volume < 0.66)) return;
-			var cx = body_w;
-			var cy = size / 2;
-			var start = (Math.PI - style.waveArcDegree) / 2 - Math.PI / 2
-			var end = start + style.waveArcDegree;
-			$ctx.ss(style.waveColors[index])
-			    .bp()
-			    .arc(x + cx, y + cy, wave_r * radius - wave_t / 2, start, end)
-			    .s()
-			    .cp();
-		});
-		// Draw Cross
-		$ctx.lw(cross_t).lc(style.crossCapStyle);
-		if (!style.volume) {
-			var cross_x = body_w;
-			var cross_s = size - cross_x; //cross size
-			var crossMargin = cross_s * style.crossMarginRate;
-			cross_s -= crossMargin * 2;
-			var offset_x = crossMargin * style.crossHPosRate;
-			var offset_y = size * (style.crossVPosRate - 0.5) - cross_s / 2;
-			$ctx.ss(style.crossColor).cross(x + cross_x + offset_x, y + offset_y, cross_s, cross_s);
+		$ctx.fs(style.bodyColor).bp().mt(ncell.r, ncell.y).lt(ncell.x, ncell.y)
+			.lt(ncell.x, ncell.b).lt(ncell.r, ncell.b).lt(ccell.r, ccell.b)
+			.lt(ccell.r, ccell.y).lt(ncell.r, ncell.y).f().cp();
+		if (style.volume <= 0) {
+			var crosst = style.crossThicknessRate * squarew;
+			var xw = Math.min(vcells[2].w, vcells[2].h) * style.crossSizeRate;
+			var xcell = vcells[2].clone().resize(xw, xw); 
+			$ctx.lw(crosst).lc(style.crossCapStyle).ss(style.crossColor)
+				.cross(xcell.x, xcell.y, xcell.w, xcell.h);
+		}
+		else {
+			var wavet = style.waveThicknessRate * squarew;
+			var wcell = vcells[2];
+			var wdegs = -style.waveArcDegree / 2;
+			var wdege = wdegs + style.waveArcDegree;
+			var vperw = 1 / style.waveRadiusRates.length;
+			$ctx.lw(wavet).lc(style.waveCapStyle);
+			style.waveRadiusRates.forEach(function (rrate, i) {
+				if (style.volume < vperw * i) return;
+				$ctx.ss(style.waveColors[i]).bp().arcd(wcell.x, wcell.cy, 
+					wcell.w * rrate - wavet / 2, wdegs, wdege).s().cp();
+			});
 		}
 	}
 	canvasicon.drawClose = function (ctx, style) {
 		style = initprops(style, [
 			{ name: 'color',         value: canvasicon.primaryColor },
-			{ name: 'cap',           value: 'round' },
+			{ name: 'cap',           value: 'square' },
 			{ name: 'thicknessRate', value: 0.15 }, // Thickness rate compared with size 
-			{ name: 'paddingRate',   value: 0.30 }, // Margin rate compared with size
+			{ name: 'paddingRate',   value: 0.40 }, // Margin rate compared with size
 
 		]);
 		var b = new Rect(style.x, style.y, style.width, style.height);
@@ -171,9 +153,9 @@ var canvasicon = new function (undefined) {
 	canvasicon.drawMenu = function (ctx, style) {
 		style = initprops(style, [
 			{ name: 'color',         value: canvasicon.primaryColor },
-			{ name: 'cap',           value: 'round' },
+			{ name: 'cap',           value: 'square' },
 			{ name: 'thicknessRate', value: 0.13 }, // Thickness rate compared with min(width, height) 
-			{ name: 'paddingRate',   value: 0.15 }
+			{ name: 'paddingRate',   value: 0.2 }
 		]);
 		var bounds = new Rect(style.x, style.y, style.width, style.height);
 		var squarew = Math.min(bounds.w, bounds.h);
@@ -181,7 +163,7 @@ var canvasicon = new function (undefined) {
 		var p = style.paddingRate * squarew;
 		bounds.resize(squarew, squarew).inflate(-t-p, -t-p);
 		var $ctx = canvasicon.$(ctx).lw(t).lc(style.cap).ss(style.color);
-		bounds.split(1,1,1).forEach(function(cell){
+		bounds.split('*', '*', '*').forEach(function(cell){
 			$ctx.bp().mt(cell.x, cell.cy).lt(cell.r, cell.cy).s().cp();	
 		});
 	}

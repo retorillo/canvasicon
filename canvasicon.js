@@ -13,6 +13,31 @@ var canvasicon = new function (undefined) {
 		});
 		return obj;
 	}
+	function Rect(x, y, w, h){
+		this.x = x || 0; this.y = y || 0; this.w = w || 0; this.h = h || 0;
+		this.resize = function(w, h) { var t = this; var cx = t.cx, cy = t.cy; t.w = w; t.h = h; t.cx = cx; t.cy = cy; return t; }
+		this.inflate = function (x, y) { var t = this; t.x -= x / 2; t.w += x; t.y -= y / 2; t.h += y; return t; }
+		this.offset  = function (x, y) { var t = this; t.x += x; t.y += y; return t; }
+		this.clone = function() { return new Rect(this.x, this.y, this.w, this.h); }
+		var toarray = function (list) { var a = []; for (var c = 0 ; c < list.length; c++) a.push(list[c]); return a; }
+		var split = function(ratio, y, h) {
+			var r = [], tr = 0; y = y || 'y'; h = h || 'h'; ratio.forEach(function(r) { tr += r });
+			for (var c = 0, sy = this[y], sh = this[h] / tr; c < ratio.length; sy += r[c][h], c++) {
+				r[c] = this.clone(); r[c][y] = sy; r[c][h] = sh * ratio[c];
+			}
+			return 	r;
+		}
+		this.split  = function() { return split.apply(this, [toarray(arguments)]); }
+		this.vsplit = function() { return split.apply(this, [toarray(arguments), 'x', 'w']); }
+		Object.defineProperties(this, {
+			cx: { get: function()  { return this.x + this.w / 2; },
+			      set: function(v) { this.x = v - this.w / 2; } },
+			cy: { get: function()  { return this.y + this.h / 2; },
+			      set: function(v) { this.y = v - this.h / 2; } },
+			r:  { get: function()  { return this.x + this.w; } },
+			b:  { get: function()  { return this.y + this.h; } },
+		});
+	}
 	canvasicon.$ = function (ctx) {
 		var obj = {};
 		obj.ctx = ctx;
@@ -33,6 +58,8 @@ var canvasicon = new function (undefined) {
 				       : function() { this.ctx[d.l].apply(this.ctx, arguments); return obj; }
 			obj[d.l] = obj[d.s];
 		});
+		function deg2rad (deg) { return (deg / 180) * Math.PI }
+		obj.arcd = function(cx, cy, r, d1, d2) { this.arc(cx, cy, r, deg2rad(d1), deg2rad(d2)); return this; }
 		// WARNING: polygon method is experimental
 		obj.polygon = function (toolHandler) {
 			var _tool = {};
@@ -163,26 +190,21 @@ var canvasicon = new function (undefined) {
 			{ name: 'toggleColor',     value: canvasicon.primaryColor },
 			{ name: 'cap',             value: 'round' },
 			{ name: 'backgroundColor', value: 'transparent' },
-			{ name: 'switch',        value: 0 },    // 0 is off, 1 is on
-			{ name: 'thicknessRate', value: 0.08 }, // Thickness rate compared with size 
-			{ name: 'lineGap',       value: 0.25 }, // Line gap (0.5 is longest, 0 is none)
-			{ name: 'cornerRate',    value: 0.20 },
+			{ name: 'switch',          value: 0 },    // 0 is off, 1 is on
+			{ name: 'thicknessRate',   value: 0.08 }, // Thickness rate compared with width 
+			{ name: 'cornerRate',      value: 0.20 },
 		]);
+		var bounds = new Rect(0, 0, style.width, style.height);
+		var t = style.thicknessRate * bounds.w;
+		var cr = style.cornerRate;
+		bounds.inflate(-t, -t).resize(bounds.w, cr * bounds.w * 2); 
+		var cells = bounds.vsplit(cr, 1 - cr * 2, cr);
 		var $ctx = canvasicon.$(ctx);
-		var size = Math.min(style.width, style.height);
-		var x = style.x + (style.width - size) / 2;
-		var y = style.y + (style.height - size) / 2;
-		var t = style.thicknessRate * size;
-		var cornerw = style.cornerRate * size;
-		var centery = style.height / 2;
-		var left = x + cornerw + t;
-		var right = x + style.width - cornerw - t;
 		$ctx.lw(t).lc(style.cap).ss(style.borderColor).fs(style.backgroundColor).bp()
-			.arc(left, y + centery, cornerw, 0 + Math.PI / 2, Math.PI + Math.PI / 2) // lt
-			.lt(right, y + centery - cornerw)  // rt
-			.arc(right, y + centery, cornerw, 0 - Math.PI / 2, Math.PI - Math.PI / 2) // rb
-			.lt(left, y + centery + cornerw) // lb
-			.f().s().cp();
-		$ctx.fs(style.toggleColor).bp().arc(left + (right - left) * style.switch, y + centery, cornerw - t, 0, Math.PI * 2).f().cp();	
+			.arcd(cells[0].r, cells[0].cy, cells[0].w, 90, 270).lt(cells[1].r, cells[1].y)
+			.arcd(cells[2].x, cells[2].cy, cells[2].w, 270, 90).lt(cells[1].x, cells[1].b)
+			.f().s().cp().fs(style.toggleColor).bp()
+			.arcd(cells[1].x + cells[1].w * style.switch, cells[1].cy, cells[0].w - t, 0, 360)
+			.f().cp();
 	}
 };

@@ -158,31 +158,32 @@ var canvasicon = new function (undefined) {
 			{ name: 'color',         value: canvasicon.primaryColor },
 			{ name: 'cap',           value: 'round' },
 			{ name: 'thicknessRate', value: 0.15 }, // Thickness rate compared with size 
-			{ name: 'marginRate',    value: 0.10 }, // Margin rate compared with size
+			{ name: 'paddingRate',   value: 0.30 }, // Margin rate compared with size
 
 		]);
-		var $ctx = canvasicon.$(ctx);
-		var size = Math.min(style.width, style.height);
-		var x = style.x + (style.width - size) / 2;
-		var y = style.y + (style.height - size) / 2;
-		var t = style.thicknessRate * size;
-		var m = style.marginRate * size;
-		$ctx.lw(t).lc(style.cap).ss(style.color).cross(x + t + m, y + t + m, style.width - 2 * (t + m), style.height - 2 * (t + m));
+		var b = new Rect(style.x, style.y, style.width, style.height);
+		var squarew = Math.min(b.w, b.h);
+		var t = style.thicknessRate * squarew;
+		var p = style.paddingRate * squarew;
+		b.resize(squarew, squarew).inflate(-t-p, -t-p);	
+		canvasicon.$(ctx).lw(t).lc(style.cap).ss(style.color).cross(b.x, b.y, b.w, b.h);
 	}
 	canvasicon.drawMenu = function (ctx, style) {
 		style = initprops(style, [
 			{ name: 'color',         value: canvasicon.primaryColor },
 			{ name: 'cap',           value: 'round' },
-			{ name: 'thicknessRate', value: 0.15 }, // Thickness rate compared with size 
-			{ name: 'lineGap',       value: 0.25 }, // Line gap (0.5 is longest, 0 is none)
+			{ name: 'thicknessRate', value: 0.13 }, // Thickness rate compared with min(width, height) 
+			{ name: 'paddingRate',   value: 0.15 }
 		]);
-		var $ctx = canvasicon.$(ctx);
-		var size = Math.min(style.width, style.height);
-		var x = style.x + (style.width - size) / 2;
-		var y = style.y + (style.height - size) / 2;
-		var t = style.thicknessRate * size;
-		var line = function(y) { $ctx.lw(t).lc(style.cap).ss(style.color).bp().mt(x + t, y).lt(x + style.width - t, y).s().cp(); };
-		[(0.5 - style.lineGap), 0.5, (0.5 + style.lineGap)].forEach(function(hr) { line(y + hr * style.height) });
+		var bounds = new Rect(style.x, style.y, style.width, style.height);
+		var squarew = Math.min(bounds.w, bounds.h);
+		var t = style.thicknessRate * squarew;
+		var p = style.paddingRate * squarew;
+		bounds.resize(squarew, squarew).inflate(-t-p, -t-p);
+		var $ctx = canvasicon.$(ctx).lw(t).lc(style.cap).ss(style.color);
+		bounds.split(1,1,1).forEach(function(cell){
+			$ctx.bp().mt(cell.x, cell.cy).lt(cell.r, cell.cy).s().cp();	
+		});
 	}
 	canvasicon.drawSwitch = function (ctx, style) {
 		style = initprops(style, [
@@ -194,7 +195,7 @@ var canvasicon = new function (undefined) {
 			{ name: 'thicknessRate',   value: 0.08 }, // Thickness rate compared with width 
 			{ name: 'cornerRate',      value: 0.20 },
 		]);
-		var bounds = new Rect(0, 0, style.width, style.height);
+		var bounds = new Rect(style.x, style.y, style.width, style.height);
 		var t = style.thicknessRate * bounds.w;
 		var cr = style.cornerRate;
 		bounds.inflate(-t, -t).resize(bounds.w, cr * bounds.w * 2); 

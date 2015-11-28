@@ -1,6 +1,6 @@
 console.log('test.js');
 document.addEventListener('DOMContentLoaded', function(){
-	['Speaker', 'Close', 'Menu', 'Switch'].forEach(function(name) {
+	['Speaker', 'Close', 'Menu', 'Switch', 'Lock', 'Bucket'].forEach(function(name) {
 		var canvas = document.createElement('canvas');
 		canvas.setAttribute('width', 50);
 		canvas.setAttribute('height', 50);

@@ -1,9 +1,7 @@
 $(function(){
 	var animations = [];
-	var w = 50;
-	var h = 50;
-
-
+	var w = 200;
+	var h = 200;
 	var cubicInOut = Math.easeInOutCubic = function (keytime) {
 		keytime /= 0.5; if (keytime < 1) return 0.5 * keytime * keytime * keytime;
 		keytime -= 2; return 0.5 * (keytime * keytime * keytime + 2);
@@ -26,7 +24,7 @@ $(function(){
 		i.ctx = $c.get(0).getContext('2d');
 		if (i.transition) 
 			animations.push(i);
-		canvasicon['draw' + i.name](i.ctx);
+		canvasicon['draw' + i.name](i.ctx, { width: w, height: h });
 	});
 
 	var start = new Date().getTime();
@@ -39,6 +37,8 @@ $(function(){
 			if (i.easing) keytime = i.easing(keytime);
 			var style = {};
 			var v = i.step ? Math.floor(keytime / i.step) * i.step : keytime;
+			style.width = w;
+			style.height = h;
 			style[i.transition] = v;
 			i.ctx.clearRect(0, 0, w, h);
 			canvasicon['draw' + i.name](i.ctx, style);

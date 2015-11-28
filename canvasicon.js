@@ -9,7 +9,7 @@ var canvasicon = new function (undefined) {
 		  { name: 'height', value: canvasicon.defaultSize }
 		].forEach(function(i) { setters.push(i); });
 		setters.forEach(function(setter) {
-			obj[setter.name] = obj[setter.name] || setter.value;
+			obj[setter.name] = (obj[setter.name] != undefined) ? obj[setter.name] : setter.value;
 		});
 		return obj;
 	}
@@ -93,13 +93,12 @@ var canvasicon = new function (undefined) {
 	}
 	canvasicon.defaultSize = 50;
 	canvasicon.primaryColor = '#000';
-	canvasicon.dangerColor  = '#b02';
 	canvasicon.drawSpeaker = function (ctx, style) {
 		style = initprops(style, [
 			{ name: 'volume',             value: 1 },
 			{ name: 'bodyColor',          value: canvasicon.primaryColor },
 			{ name: 'waveColors',         value: [canvasicon.primaryColor, canvasicon.primaryColor, canvasicon.primaryColor] },
-			{ name: 'crossColor',         value: canvasicon.dangerColor },
+			{ name: 'crossColor',         value: canvasicon.primaryColor },
 			{ name: 'paddingRate',        value: 0.1  },
 			{ name: 'coneWidthRate',      value: 0.20 },
 			{ name: 'coneHeightRate',     value: 0.70 },
